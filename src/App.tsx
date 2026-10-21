@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { useState } from 'react';
 
 interface Service {
   id: number;
@@ -19,49 +19,65 @@ const availableServices: Service[] = [
   { id: 4, name: 'SEO-оптимизация', price: 20000 },
 ];
 
-export default function ProjectBuilder() {
-  let selectedServices: ServiceItem[] = [];
-  let selectedServiceId: number | string = '';
-  let quantity: number = 1;
+export default function App() {
+  const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | ''>('');
+  const [quantity, setQuantity] = useState<number>(1);
 
-  let totalPrice = 0;
-
-  for (const item of selectedServices) {
-    totalPrice += item.service.price * item.quantity;
-  }
+  const totalPrice = selectedServices.reduce(
+    (total, item) => total + item.service.price * item.quantity,
+    0
+  );
 
   function addService() {
     const service = availableServices.find(
       (s) => s.id === selectedServiceId
     );
 
-    if (!service) return;
+    if (!service || quantity < 1 || quantity > 10) return;
 
-    const existing = selectedServices.find(
-      (item) => item.service === service
+    setSelectedServices((prev) => {
+      const existing = prev.find(
+        (item) => item.service.id === service.id
+      );
+
+      if (existing) {
+        return prev.map((item) =>
+          item.service.id === service.id
+            ? {
+              ...item,
+              quantity: item.quantity + quantity,
+            }
+            : item
+        );
+      }
+
+      return [...prev, { service, quantity }];
+    });
+
+    setSelectedServiceId('');
+    setQuantity(1);
+  }
+
+  function removeService(serviceId: number) {
+    setSelectedServices((prev) =>
+      prev.filter((item) => item.service.id !== serviceId)
     );
-
-    if (existing) {
-      existing.quantity += quantity;
-    } else {
-      selectedServices.push({ service, quantity });
-    }
   }
 
-  function removeService(item: ServiceItem) {
-    const index = selectedServices.indexOf(item);
-
-    if (index > -1) {
-      selectedServices.splice(index, 1);
-    }
-  }
+  const cellStyle: React.CSSProperties = {
+    border: '1px solid #ddd',
+    padding: 10,
+    textAlign: 'left',
+  };
 
   return (
     <div
       className="project-builder"
       style={{
         maxWidth: 700,
-        margin: '0 auto',
+        margin: '40px auto',
+        padding: 20,
         fontFamily: 'sans-serif',
       }}
     >
@@ -71,6 +87,7 @@ export default function ProjectBuilder() {
         className="add-service"
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           gap: 12,
           marginBottom: 24,
           alignItems: 'center',
@@ -78,9 +95,12 @@ export default function ProjectBuilder() {
       >
         <select
           value={selectedServiceId}
-          onChange={(e) => {
-            selectedServiceId = Number(e.target.value);
-          }}
+          onChange={(e) =>
+            setSelectedServiceId(
+              e.target.value === '' ? '' : Number(e.target.value)
+            )
+          }
+          style={{ padding: '8px 12px', maxWidth: '100%' }}
         >
           <option value="" disabled>
             Выберите услугу
@@ -88,7 +108,7 @@ export default function ProjectBuilder() {
 
           {availableServices.map((service) => (
             <option key={service.id} value={service.id}>
-              {service.name} — {service.price.toLocaleString()} ₽
+              {service.name} — {service.price.toLocaleString('ru-RU')} ₽
             </option>
           ))}
         </select>
@@ -98,13 +118,14 @@ export default function ProjectBuilder() {
           min={1}
           max={10}
           value={quantity}
-          onChange={(e) => {
-            quantity = Number(e.target.value);
-          }}
+          onChange={(e) => setQuantity(Number(e.target.value))}
           style={{ width: 80, padding: '8px 12px' }}
         />
 
-        <button onClick={addService} disabled={!selectedServiceId}>
+        <button
+          onClick={addService}
+          disabled={!selectedServiceId || quantity < 1 || quantity > 10}
+        >
           Добавить
         </button>
       </div>
@@ -116,39 +137,30 @@ export default function ProjectBuilder() {
         >
           <thead>
             <tr>
-              <th style={{ border: '1px solid #ddd', padding: 10, textAlign: 'left' }}>
-                Услуга
-              </th>
-              <th style={{ border: '1px solid #ddd', padding: 10, textAlign: 'left' }}>
-                Цена за ед.
-              </th>
-              <th style={{ border: '1px solid #ddd', padding: 10, textAlign: 'left' }}>
-                Кол-во
-              </th>
-              <th style={{ border: '1px solid #ddd', padding: 10, textAlign: 'left' }}>
-                Сумма
-              </th>
-              <th style={{ border: '1px solid #ddd', padding: 10, textAlign: 'left' }}></th>
+              <th style={cellStyle}>Услуга</th>
+              <th style={cellStyle}>Цена за ед.</th>
+              <th style={cellStyle}>Кол-во</th>
+              <th style={cellStyle}>Сумма</th>
+              <th style={cellStyle}>Действие</th>
             </tr>
           </thead>
 
           <tbody>
             {selectedServices.map((item) => (
               <tr key={item.service.id}>
-                <td style={{ border: '1px solid #ddd', padding: 10 }}>
-                  {item.service.name}
+                <td style={cellStyle}>{item.service.name}</td>
+                <td style={cellStyle}>
+                  {item.service.price.toLocaleString('ru-RU')} ₽
                 </td>
-                <td style={{ border: '1px solid #ddd', padding: 10 }}>
-                  {item.service.price.toLocaleString()} ₽
+                <td style={cellStyle}>{item.quantity}</td>
+                <td style={cellStyle}>
+                  {(item.service.price * item.quantity).toLocaleString(
+                    'ru-RU'
+                  )}{' '}
+                  ₽
                 </td>
-                <td style={{ border: '1px solid #ddd', padding: 10 }}>
-                  {item.quantity}
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: 10 }}>
-                  {(item.service.price * item.quantity).toLocaleString()} ₽
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: 10 }}>
-                  <button onClick={() => removeService(item)}>
+                <td style={cellStyle}>
+                  <button onClick={() => removeService(item.service.id)}>
                     Удалить
                   </button>
                 </td>
@@ -158,17 +170,11 @@ export default function ProjectBuilder() {
 
           <tfoot>
             <tr>
-              <td
-                colSpan={3}
-                style={{ border: '1px solid #ddd', padding: 10 }}
-              >
+              <td colSpan={3} style={cellStyle}>
                 <strong>Итого:</strong>
               </td>
-              <td
-                colSpan={2}
-                style={{ border: '1px solid #ddd', padding: 10 }}
-              >
-                <strong>{totalPrice.toLocaleString()} ₽</strong>
+              <td colSpan={2} style={cellStyle}>
+                <strong>{totalPrice.toLocaleString('ru-RU')} ₽</strong>
               </td>
             </tr>
           </tfoot>
